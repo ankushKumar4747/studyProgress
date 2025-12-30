@@ -1,0 +1,9 @@
+
+{
+  "name": "StudySync",
+  "description": "A comprehensive college study dashboard for managing courses, assignments, and academic performance.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
