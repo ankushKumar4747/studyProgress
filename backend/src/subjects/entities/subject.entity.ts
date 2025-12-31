@@ -33,6 +33,8 @@ export class Subject {
       isCompleted: boolean;
     }[];
   }[];
+
+  
 }
 
 export const SubjectSchema = SchemaFactory.createForClass(Subject);

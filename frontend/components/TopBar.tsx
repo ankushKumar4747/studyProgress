@@ -1,16 +1,19 @@
-
-import React from 'react';
-import { useLocation } from 'react-router-dom';
+import React from "react";
+import { useLocation } from "react-router-dom";
 
 const TopBar: React.FC = () => {
   const location = useLocation();
   const getTitle = () => {
     const path = location.pathname.substring(1);
-    if (!path) return 'Dashboard Overview';
-    if (path === 'new-task') return 'New Assignment Plan';
-    if (path === 'tasks') return 'Syllabus Tracker';
-    if (path === 'schedule') return 'Completed Topics';
-    return path.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    if (!path) return "Dashboard Overview";
+    if (path === "new-task" || path === "new-assignment")
+      return "New Assignment Plan";
+    if (path === "tasks") return "Syllabus Tracker";
+    if (path === "schedule") return "Completed Topics";
+    return path
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   return (
@@ -19,14 +22,20 @@ const TopBar: React.FC = () => {
         <button className="md:hidden text-white">
           <span className="material-symbols-outlined">menu</span>
         </button>
-        <h2 className="text-lg font-bold text-white hidden sm:block">{getTitle()}</h2>
+        <h2 className="text-lg font-bold text-white hidden sm:block">
+          {getTitle()}
+        </h2>
       </div>
 
       <div className="flex items-center gap-4 sm:gap-6">
         <div className="flex items-center gap-2 bg-[#233348] rounded-lg px-3 py-1.5 border border-white/5 cursor-pointer hover:bg-[#2c3f56] transition-colors">
-          <span className="material-symbols-outlined text-[#92a9c9] text-[18px]">calendar_today</span>
+          <span className="material-symbols-outlined text-[#92a9c9] text-[18px]">
+            calendar_today
+          </span>
           <span className="text-sm font-medium text-white">Oct 24, 2023</span>
-          <span className="material-symbols-outlined text-[#92a9c9] text-[18px]">expand_more</span>
+          <span className="material-symbols-outlined text-[#92a9c9] text-[18px]">
+            expand_more
+          </span>
         </div>
         <button className="relative text-[#92a9c9] hover:text-white transition-colors">
           <span className="material-symbols-outlined">notifications</span>
