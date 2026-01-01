@@ -2,17 +2,19 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
 
 export type StudyTimeDocument = HydratedDocument<StudyTime>;
-@Schema()
+@Schema({ timestamps: true })
 export class StudyTime {
   @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Subject' })
   subjectId: mongoose.Schema.Types.ObjectId;
 
-  @Prop({ required: true })
-  studyTime: number;
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'User' })
+  userId: mongoose.Schema.Types.ObjectId;
 
   @Prop({ required: true })
-  studyDate: Date;
-  
+  studyMinutes: number;
+
+  @Prop({ required: true })
+  studyDate: number;
 }
 
 export const StudyTimeSchema = SchemaFactory.createForClass(StudyTime);

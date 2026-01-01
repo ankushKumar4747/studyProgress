@@ -180,6 +180,11 @@ const NewAssignment: React.FC = () => {
       }));
 
       const payload = { subjects: finalSubjects };
+
+      // Log the exact payload structure
+      console.log("📤 Sending Assignment Payload:");
+      console.log(JSON.stringify(payload, null, 2));
+
       await assignmentAPI.createAssignment(payload);
       navigate("/dashboard");
     } catch (err: any) {

@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import mongoose, { HydratedDocument } from 'mongoose';
 
 export type SubjectDocument = HydratedDocument<Subject>;
 
@@ -13,12 +13,12 @@ export class Subject {
 
   @Prop([
     {
-      _id: false, 
+      _id: false,
       name: { type: String, required: true },
       section: { type: String, required: true },
       subtopics: [
         {
-          _id: false, 
+          _id: false,
           name: { type: String, required: true },
           isCompleted: { type: Boolean, default: false },
         },
@@ -34,7 +34,8 @@ export class Subject {
     }[];
   }[];
 
-  
+  @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: 'User' })
+  userId: mongoose.Schema.Types.ObjectId;
 }
 
 export const SubjectSchema = SchemaFactory.createForClass(Subject);

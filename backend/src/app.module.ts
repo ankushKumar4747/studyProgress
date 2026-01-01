@@ -7,18 +7,19 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { SubjectsModule } from './subjects/subjects.module';
 import { AssignmentModule } from './assignment/assignment.module';
 import { JwtModule } from '@nestjs/jwt';
+import { ScheduleModule } from '@nestjs/schedule';
 @Module({
   imports: [
     AuthModule,
     MongooseModule.forRoot('mongodb://localhost:27017/studyProgress'),
     SubjectsModule,
     AssignmentModule,
-    JwtModule
-    .register({
+    JwtModule.register({
       global: true,
       secret: 'secretKey',
       signOptions: { expiresIn: '1h' },
     }),
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [AppService],

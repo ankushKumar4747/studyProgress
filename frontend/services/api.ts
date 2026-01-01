@@ -139,6 +139,67 @@ export const assignmentAPI = {
   },
 };
 
+// Study Goal API
+export const studyGoalAPI = {
+  getStudyGoal: async () => {
+    const response = await axiosInstance.get("/subjects/studyGoal");
+    return response.data;
+  },
+
+  updateStudyGoal: async (minutes: number) => {
+    const response = await axiosInstance.post("/subjects/studyGoal", {
+      min: minutes,
+    });
+    return response.data;
+  },
+
+  getStreak: async () => {
+    const response = await axiosInstance.get("/subjects/streak");
+    return response.data;
+  },
+};
+
+// Subjects API
+export const subjectsAPI = {
+  getUserSubjects: async () => {
+    const response = await axiosInstance.get("/subjects/list");
+    return response.data;
+  },
+
+  getSubjectProgress: async (subjectId: string) => {
+    const response = await axiosInstance.get(`/subjects/${subjectId}/progress`);
+    return response.data;
+  },
+
+  getTotalSubjectsWithData: async () => {
+    const response = await axiosInstance.get("/subjects/totalSubjectsWithData");
+    return response.data;
+  },
+
+  updateStudyTime: async (min: number, subjectId: string) => {
+    const response = await axiosInstance.post("/subjects/studyTimeUpdate", {
+      min,
+      subjectId,
+    });
+    return response.data;
+  },
+
+  getStudyTime: async () => {
+    const response = await axiosInstance.get("/subjects/studyTime");
+    return response.data;
+  },
+
+  getWeeklyFocusDistribution: async () => {
+    const response = await axiosInstance.get("/subjects/weekly-focus");
+    return response.data;
+  },
+
+  getWeeklyMastery: async () => {
+    const response = await axiosInstance.get("/subjects/weekly-mastery");
+    return response.data;
+  },
+};
+
 export default {
   auth: authAPI,
   user: userAPI,
@@ -147,4 +208,6 @@ export default {
   analytics: analyticsAPI,
   timeLogs: timeLogsAPI,
   assignment: assignmentAPI,
+  studyGoal: studyGoalAPI,
+  subjects: subjectsAPI,
 };

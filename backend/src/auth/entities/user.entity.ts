@@ -18,12 +18,9 @@ export class User {
   streak: number;
 
   // planned study time (in minutes)
-  @Prop({ default: 0 })
+  @Prop({ default: 240 })
   studyMinutes: number;
 
-  // actual studied time (in minutes)
-  @Prop({ default: 0 })
-  studiedMinutes: number;
 
   @Prop({ type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Assignment' }] })
   assignments: {

@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { studyGoalAPI, subjectsAPI } from "../services/api";
 
 const studyData = [
   { name: "Mon", hours: 4.5, goal: 5 },
@@ -66,17 +67,107 @@ const ENROLLED_SUBJECTS = [
 ];
 
 const Dashboard: React.FC = () => {
-  const [activeSubject, setActiveSubject] = useState<
-    (typeof ENROLLED_SUBJECTS)[0] | null
-  >(null);
+  // activeSubject is derived from the fetched subjects, so we should strictly type it or use any for flexibility with the new chapters data
+  const [activeSubject, setActiveSubject] = useState<any | null>(null);
+  const [isSessionFinished, setIsSessionFinished] = useState(false);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
   const [dailyGoalMinutes, setDailyGoalMinutes] = useState(300); // Default 5 hours
   const [studiedTodayMinutes, setStudiedTodayMinutes] = useState(252); // Mock 4.2 hours
   const [isEditingGoal, setIsEditingGoal] = useState(false);
+  const [isLoadingGoal, setIsLoadingGoal] = useState(false);
   const [tempHours, setTempHours] = useState(Math.floor(dailyGoalMinutes / 60));
   const [tempMins, setTempMins] = useState(dailyGoalMinutes % 60);
+  const [currentStreak, setCurrentStreak] = useState(12); // Default value
+
+  // Fetch study goal and streak on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch study goal
+        const goalResponse = await studyGoalAPI.getStudyGoal();
+        if (goalResponse.minutes) {
+          setDailyGoalMinutes(goalResponse.minutes);
+        }
+
+        // Fetch streak
+        const streakResponse = await studyGoalAPI.getStreak();
+        if (streakResponse.streak !== undefined) {
+          setCurrentStreak(streakResponse.streak);
+        }
+
+        // Fetch study time
+        const timeResponse = await subjectsAPI.getStudyTime();
+        if (timeResponse.totalStudyMinutes !== undefined) {
+          setStudiedTodayMinutes(timeResponse.totalStudyMinutes);
+        }
+      } catch (err) {
+        console.error("Failed to fetch data:", err);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const [focusDistribution, setFocusDistribution] = useState<any[]>(studyData);
+  useEffect(() => {
+    const fetchFocusDistribution = async () => {
+      try {
+        const data = await subjectsAPI.getWeeklyFocusDistribution();
+        if (Array.isArray(data)) {
+          setFocusDistribution(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch focus distribution:", err);
+      }
+    };
+    fetchFocusDistribution();
+  }, []);
+
+  const [subjects, setSubjects] = useState<any[]>([]);
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        const data = await subjectsAPI.getTotalSubjectsWithData();
+        // Enrich data with color and code for UI
+        const colors = ["indigo", "rose", "amber", "slate", "emerald", "blue"];
+        const enrichedSubjects = data.map((sub: any, index: number) => ({
+          ...sub,
+          id: sub._id,
+          name: sub.subjectName,
+          code: sub.subjectName.substring(0, 3).toUpperCase() + "101",
+          color: colors[index % colors.length],
+          topics: sub.chapters.flatMap((c: any) =>
+            c.subtopics.map((s: any) => s.name)
+          ),
+          chapters: sub.chapters,
+        }));
+        setSubjects(enrichedSubjects);
+      } catch (err) {
+        console.error("Failed to fetch subjects:", err);
+      }
+    };
+    fetchSubjects();
+  }, []);
+
+  const [masteryData, setMasteryData] = useState<any>({
+    totalHours: 0,
+    subjects: [],
+  });
+
+  useEffect(() => {
+    const fetchMastery = async () => {
+      try {
+        const data = await subjectsAPI.getWeeklyMastery();
+        if (data) {
+          setMasteryData(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch mastery data:", err);
+      }
+    };
+    fetchMastery();
+  }, []);
 
   useEffect(() => {
     let interval: number | undefined;
@@ -100,23 +191,48 @@ const Dashboard: React.FC = () => {
   };
 
   const handleStartTimer = () => setIsTimerRunning(true);
-  const handleEndTimer = () => {
+  const handleStopSession = async () => {
     setIsTimerRunning(false);
-    alert(
-      `Session for ${activeSubject?.name} ended.\nTopic Covered: ${
-        selectedTopic || "General Study"
-      }\nDuration: ${formatTime(timerSeconds)}`
-    );
-    setTimerSeconds(0);
-    setSelectedTopic(null);
-    setActiveSubject(null);
+    setIsSessionFinished(true);
+
+    if (activeSubject?.id && timerSeconds > 0) {
+      try {
+        const minutes = Math.ceil(timerSeconds / 60);
+        await subjectsAPI.updateStudyTime(minutes, activeSubject.id);
+        console.log("Study time updated:", minutes);
+      } catch (error) {
+        console.error("Failed to update study time:", error);
+      }
+    }
   };
 
-  const handleUpdateGoal = (e: React.FormEvent) => {
+  const handleUpdateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     const totalMinutes = Number(tempHours) * 60 + Number(tempMins);
-    setDailyGoalMinutes(totalMinutes);
-    setIsEditingGoal(false);
+    setIsLoadingGoal(true);
+
+    try {
+      // Step 1: Update the study goal
+      await studyGoalAPI.updateStudyGoal(totalMinutes);
+
+      // Step 2: Fetch the updated goal from backend to confirm
+      const response = await studyGoalAPI.getStudyGoal();
+      if (response.minutes) {
+        setDailyGoalMinutes(response.minutes);
+        console.log(
+          "✅ Study goal updated and refreshed:",
+          response.minutes,
+          "minutes"
+        );
+      }
+
+      setIsEditingGoal(false);
+    } catch (err) {
+      console.error("Failed to update study goal:", err);
+      alert("Failed to update study goal. Please try again.");
+    } finally {
+      setIsLoadingGoal(false);
+    }
   };
 
   const progressPercent = Math.min(
@@ -208,21 +324,25 @@ const Dashboard: React.FC = () => {
                 Work Streak
               </p>
               <h3 className="text-3xl font-black text-white mt-1">
-                12{" "}
+                {currentStreak}{" "}
                 <span className="text-lg text-[#5a6b85] font-normal">Days</span>
               </h3>
               <p className="text-sm text-amber-400 mt-2 flex items-center gap-1 font-bold">
                 <span className="material-symbols-outlined text-[16px]">
                   trending_up
                 </span>
-                New Personal Best!
+                {currentStreak > 0
+                  ? "Keep it going!"
+                  : "Start your streak today!"}
               </p>
               <div className="flex gap-1 mt-3">
                 {[1, 2, 3, 4, 5, 6, 7].map((i) => (
                   <div
                     key={i}
                     className={`h-1.5 flex-1 rounded-full ${
-                      i <= 6 ? "bg-amber-500" : "bg-slate-700"
+                      i <= Math.min(currentStreak, 7)
+                        ? "bg-amber-500"
+                        : "bg-slate-700"
                     }`}
                   ></div>
                 ))}
@@ -259,7 +379,7 @@ const Dashboard: React.FC = () => {
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-white uppercase tracking-tight">
-                Total Subjects ({ENROLLED_SUBJECTS.length})
+                Total Subjects ({subjects.length})
               </h3>
               <span className="text-xs font-bold text-[#5a6b85] uppercase tracking-widest">
                 Select to start working
@@ -267,7 +387,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {ENROLLED_SUBJECTS.map((sub) => (
+              {subjects.map((sub) => (
                 <div
                   key={sub.id}
                   onClick={() => setActiveSubject(sub)}
@@ -325,7 +445,7 @@ const Dashboard: React.FC = () => {
               </div>
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={studyData}>
+                  <BarChart data={focusDistribution}>
                     <CartesianGrid
                       strokeDasharray="3 3"
                       vertical={false}
@@ -366,13 +486,13 @@ const Dashboard: React.FC = () => {
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-surface-dark rounded-2xl border border-white/5 p-6 shadow-sm">
               <h3 className="text-lg font-bold text-white mb-6">
-                Mastery Overview
+                Mastery Overview (Last 7 Days)
               </h3>
               <div className="flex flex-col items-center justify-center mb-8 relative">
                 <div className="size-48 rounded-full border-[12px] border-slate-800 relative flex items-center justify-center">
                   <div className="text-center">
                     <span className="block text-3xl font-black text-white">
-                      28.5h
+                      {masteryData.totalHours}h
                     </span>
                     <span className="text-xs font-bold text-[#92a9c9] uppercase tracking-widest">
                       Total Focus
@@ -381,66 +501,33 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
               <div className="space-y-4">
-                <CategoryRow
-                  label="Computer Science"
-                  color="bg-indigo-500"
-                  time="12h"
-                  percent="42%"
-                />
-                <CategoryRow
-                  label="Mathematics"
-                  color="bg-rose-500"
-                  time="8h"
-                  percent="28%"
-                />
-                <CategoryRow
-                  label="Psychology"
-                  color="bg-amber-500"
-                  time="5h"
-                  percent="18%"
-                />
-                <CategoryRow
-                  label="Electives"
-                  color="bg-slate-500"
-                  time="3.5h"
-                  percent="12%"
-                />
-              </div>
-            </div>
+                {masteryData.subjects.length > 0 ? (
+                  masteryData.subjects.map((sub: any, index: number) => {
+                    // Assign colors cyclically or randomly if not provided
+                    const colors = [
+                      "bg-indigo-500",
+                      "bg-rose-500",
+                      "bg-amber-500",
+                      "bg-emerald-500",
+                      "bg-slate-500",
+                    ];
+                    const color = colors[index % colors.length];
 
-            <div className="bg-gradient-to-br from-indigo-900/40 to-surface-dark rounded-2xl border border-white/5 p-6 shadow-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-4 opacity-10">
-                <span className="material-symbols-outlined text-4xl text-white">
-                  campaign
-                </span>
-              </div>
-              <h3 className="text-lg font-bold text-white mb-2">
-                Campus Bulletin
-              </h3>
-              <p className="text-sm text-[#92a9c9] mb-4">
-                Latest updates for you
-              </p>
-              <div className="space-y-4">
-                <div className="flex gap-3 items-start border-l-2 border-primary pl-4 py-1">
-                  <div>
-                    <p className="text-white text-sm font-bold">
-                      Dr. Aris (CS101)
-                    </p>
-                    <p className="text-[#92a9c9] text-xs line-clamp-1">
-                      Midterm moved to next Wednesday.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-3 items-start border-l-2 border-rose-500 pl-4 py-1">
-                  <div>
-                    <p className="text-white text-sm font-bold">
-                      Prof. Miller (Math)
-                    </p>
-                    <p className="text-[#92a9c9] text-xs line-clamp-1">
-                      New study guide uploaded to portal.
-                    </p>
-                  </div>
-                </div>
+                    return (
+                      <CategoryRow
+                        key={index}
+                        label={sub.subjectName}
+                        color={color}
+                        time={`${sub.hours}h`}
+                        percent={`${sub.percent}%`}
+                      />
+                    );
+                  })
+                ) : (
+                  <p className="text-slate-500 text-sm text-center">
+                    No study data for the last 7 days.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -495,62 +582,98 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="w-full space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10px] font-black text-[#5a6b85] uppercase tracking-widest">
-                    Target Topic
-                  </label>
-                  {selectedTopic && (
-                    <span className="text-[10px] font-bold text-primary animate-pulse uppercase tracking-wider">
-                      Active
-                    </span>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {activeSubject.topics.map((topic) => (
-                    <button
-                      key={topic}
-                      disabled={isTimerRunning}
-                      onClick={() => setSelectedTopic(topic)}
-                      className={`px-4 py-3 rounded-2xl text-[11px] font-bold border transition-all text-left flex flex-col justify-between h-20 ${
-                        selectedTopic === topic
-                          ? "bg-primary text-white border-primary shadow-xl shadow-primary/20 scale-[1.02]"
-                          : "bg-background-dark/50 text-slate-400 border-slate-800 hover:border-slate-700 disabled:opacity-50"
-                      }`}
-                    >
-                      <span className="line-clamp-2">{topic}</span>
-                      {selectedTopic === topic && (
-                        <span className="material-symbols-outlined text-[14px]">
-                          check_circle
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-4 w-full pt-4">
-                {!isTimerRunning ? (
+              {/* Controls Area */}
+              <div className="flex items-center justify-center gap-4 w-full">
+                {!isTimerRunning && !isSessionFinished ? (
                   <button
-                    onClick={handleStartTimer}
-                    disabled={!selectedTopic}
-                    className="flex-1 bg-green-500 hover:bg-green-600 disabled:opacity-30 disabled:grayscale text-white font-black py-4 rounded-2xl shadow-xl shadow-green-500/20 transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95"
+                    onClick={() => {
+                      setIsTimerRunning(true);
+                      setIsSessionFinished(false);
+                    }}
+                    className="w-full py-4 bg-primary rounded-2xl text-white font-bold text-lg hover:bg-indigo-400 transition-all shadow-lg hover:shadow-indigo-500/25 active:scale-95 flex items-center justify-center gap-2"
                   >
                     <span className="material-symbols-outlined">
                       play_arrow
                     </span>
-                    START SESSION
+                    Start Focus
+                  </button>
+                ) : isTimerRunning ? (
+                  <button
+                    onClick={handleStopSession}
+                    className="w-full py-4 bg-rose-500 rounded-2xl text-white font-bold text-lg hover:bg-rose-400 transition-all shadow-lg hover:shadow-rose-500/25 active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined">stop</span>
+                    Stop Session
                   </button>
                 ) : (
                   <button
-                    onClick={handleEndTimer}
-                    className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-black py-4 rounded-2xl shadow-xl shadow-rose-500/20 transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95"
+                    onClick={() => {
+                      setActiveSubject(null);
+                      setIsSessionFinished(false);
+                      setTimerSeconds(0);
+                    }}
+                    className="w-full py-4 bg-slate-700 rounded-2xl text-white font-bold text-lg hover:bg-slate-600 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
                   >
-                    <span className="material-symbols-outlined">stop</span>
-                    FINISH & LOG
+                    <span className="material-symbols-outlined">close</span>
+                    Close Session
                   </button>
                 )}
               </div>
+
+              {/* Conditional Roadmap / Topics View */}
+              {isSessionFinished && (
+                <div className="w-full mt-2 animate-in slide-in-from-bottom-4 fade-in duration-500 border-t border-white/10 pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <label className="text-[10px] font-black text-[#5a6b85] uppercase tracking-widest">
+                      Session Map
+                    </label>
+                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+                      Review Progress
+                    </span>
+                  </div>
+
+                  <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+                    {activeSubject.chapters?.map((chapter: any, i: number) => (
+                      <div
+                        key={i}
+                        className="bg-background-dark/30 rounded-xl p-4 border border-white/5"
+                      >
+                        <h4 className="text-white font-bold text-sm mb-3 sticky top-0 bg-transparent backdrop-blur-sm z-10 flex items-center justify-between">
+                          {chapter.name}
+                          <span className="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded border border-white/5">
+                            Sec {chapter.section}
+                          </span>
+                        </h4>
+                        <div className="grid grid-cols-1 gap-2">
+                          {chapter.subtopics.map((sub: any, j: number) => (
+                            <div
+                              key={j}
+                              className={`flex items-center justify-between p-3 rounded-lg border text-xs font-medium transition-all ${
+                                sub.isCompleted
+                                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                                  : "bg-slate-800/50 border-white/5 text-slate-400"
+                              }`}
+                            >
+                              <span>{sub.name}</span>
+                              {sub.isCompleted && (
+                                <span className="material-symbols-outlined text-[16px]">
+                                  check_circle
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {(!activeSubject.chapters ||
+                      activeSubject.chapters.length === 0) && (
+                      <p className="text-slate-500 text-center text-sm py-4">
+                        No detailed roadmap available.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {isTimerRunning && (
                 <div className="flex items-center gap-3">
@@ -625,9 +748,17 @@ const Dashboard: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
+                disabled={isLoadingGoal}
+                className="w-full bg-primary hover:bg-primary-dark text-white font-black py-4 rounded-xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Update Goal
+                {isLoadingGoal ? (
+                  <>
+                    <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span>Updating...</span>
+                  </>
+                ) : (
+                  "Update Goal"
+                )}
               </button>
             </form>
           </div>
