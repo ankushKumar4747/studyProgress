@@ -198,80 +198,186 @@ const NewAssignment: React.FC = () => {
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-5xl mx-auto min-h-screen">
-      <div className="mb-10">
-        <h1 className="text-3xl font-black text-white flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary">
-            publish
-          </span>
-          Bulk Import Assignment
-        </h1>
-        <p className="text-[#92a9c9] mt-2">
-          Map your CSV syllabus to the tracker (use ; for multiple subtopics).
-        </p>
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {globalError && (
-          <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 text-sm font-bold">
-            {globalError}
+    <div className="p-6 md:p-10 lg:p-14 min-h-screen">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter flex items-center gap-4">
+              <span className="p-3 bg-indigo-500/20 rounded-2xl border border-indigo-500/20 text-indigo-400">
+                <span className="material-symbols-outlined text-4xl">
+                  publish
+                </span>
+              </span>
+              Bulk Import
+            </h1>
+            <p className="text-lg text-[#94a3b8] font-medium max-w-2xl">
+              Upload your syllabus CSVs to instantly generate tracked
+              assignments.
+              <span className="text-indigo-400 font-bold ml-1">
+                Use semicolons (;) for multiple subtopics.
+              </span>
+            </p>
           </div>
-        )}
+        </div>
 
-        <div className="space-y-4">
-          {subjects.map((subject, index) => (
-            <div
-              key={subject.id}
-              className="bg-surface-dark border border-white/5 rounded-2xl p-6 transition-all"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <input
-                  type="text"
-                  value={subject.name}
-                  onChange={(e) => handleNameChange(subject.id, e.target.value)}
-                  placeholder="Subject Name (e.g. DSA)"
-                  className="w-full px-4 py-3 bg-background-dark border border-white/5 rounded-xl text-white outline-none"
-                />
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={(e) =>
-                    handleFileChange(subject.id, e.target.files?.[0] || null)
-                  }
-                  className="w-full px-4 py-3 bg-background-dark border border-white/5 rounded-xl text-white outline-none cursor-pointer"
-                />
-              </div>
-              {subject.status === "success" && (
-                <p className="text-xs text-green-400 mt-2 font-bold">
-                  Successfully parsed {subject.parsedData.length} chapters.
-                </p>
-              )}
-              {subject.errorMessage && (
-                <p className="text-xs text-rose-400 mt-2 font-bold">
-                  {subject.errorMessage}
-                </p>
-              )}
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {globalError && (
+            <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-400 font-bold shadow-[0_0_30px_rgba(244,63,94,0.1)]">
+              <span className="material-symbols-outlined">error</span>
+              {globalError}
             </div>
-          ))}
-        </div>
+          )}
 
-        <div className="flex justify-between items-center pt-6">
-          <button
-            type="button"
-            onClick={addSubjectRow}
-            className="text-primary font-bold flex items-center gap-2"
-          >
-            <span className="material-symbols-outlined">add</span> Subject
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-8 py-3 bg-primary rounded-xl text-white font-black hover:scale-105 transition-all disabled:opacity-50"
-          >
-            {isSubmitting ? "Processing..." : "Generate Assignment"}
-          </button>
-        </div>
-      </form>
+          <div className="space-y-6">
+            {subjects.map((subject, index) => (
+              <div
+                key={subject.id}
+                className="group relative bg-surface-dark border border-white/5 rounded-3xl p-8 shadow-xl transition-all hover:border-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/5 animate-in slide-in-from-bottom-4 fade-in duration-500 fill-mode-backwards"
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => removeSubjectRow(subject.id)}
+                    className="size-8 flex items-center justify-center rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      close
+                    </span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                  <div className="md:col-span-5 space-y-2">
+                    <label className="text-xs font-black text-[#5a6b85] uppercase tracking-widest pl-1">
+                      Subject Name
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={subject.name}
+                        onChange={(e) =>
+                          handleNameChange(subject.id, e.target.value)
+                        }
+                        placeholder="e.g. Advanced Algorithms"
+                        className="w-full pl-5 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-600 focus:bg-background-dark"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="md:col-span-7 space-y-2">
+                    <label className="text-xs font-black text-[#5a6b85] uppercase tracking-widest pl-1">
+                      CSV Syllabus File
+                    </label>
+                    <div className="relative group/file">
+                      <input
+                        type="file"
+                        accept=".csv"
+                        onChange={(e) =>
+                          handleFileChange(
+                            subject.id,
+                            e.target.files?.[0] || null
+                          )
+                        }
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                      <div
+                        className={`w-full px-5 py-3.5 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between transition-all group-hover/file:bg-white/10 ${
+                          subject.file
+                            ? "border-indigo-500/50 bg-indigo-500/5"
+                            : ""
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <span
+                            className={`material-symbols-outlined ${
+                              subject.file
+                                ? "text-indigo-400"
+                                : "text-slate-500"
+                            }`}
+                          >
+                            {subject.file ? "description" : "upload_file"}
+                          </span>
+                          <span
+                            className={`text-sm font-bold truncate ${
+                              subject.file ? "text-white" : "text-slate-500"
+                            }`}
+                          >
+                            {subject.file
+                              ? subject.file.name
+                              : "Click to upload CSV..."}
+                          </span>
+                        </div>
+                        {subject.file && (
+                          <span className="px-2 py-1 bg-indigo-500/20 text-indigo-300 text-[10px] font-black uppercase rounded-lg">
+                            Ready
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {(subject.status === "success" || subject.errorMessage) && (
+                  <div className="mt-4 pl-1">
+                    {subject.status === "success" && (
+                      <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wide animate-in slide-in-from-left-2 fade-in">
+                        <span className="material-symbols-outlined text-[16px]">
+                          check_circle
+                        </span>
+                        Successfully parsed {subject.parsedData.length} chapters
+                      </div>
+                    )}
+                    {subject.errorMessage && (
+                      <div className="flex items-center gap-2 text-rose-400 text-xs font-bold uppercase tracking-wide animate-in slide-in-from-left-2 fade-in">
+                        <span className="material-symbols-outlined text-[16px]">
+                          warning
+                        </span>
+                        {subject.errorMessage}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-6 border-t border-white/5">
+            <button
+              type="button"
+              onClick={addSubjectRow}
+              className="group flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/5 border border-white/5 text-slate-300 font-bold hover:bg-white/10 hover:text-white transition-all w-full md:w-auto justify-center"
+            >
+              <span className="size-8 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                <span className="material-symbols-outlined text-[18px]">
+                  add
+                </span>
+              </span>
+              Add Another Subject
+            </button>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full md:w-auto px-10 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl shadow-xl shadow-indigo-500/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined">
+                    auto_awesome
+                  </span>
+                  <span className="text-lg">Generate Assignments</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

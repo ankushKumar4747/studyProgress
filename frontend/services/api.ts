@@ -176,10 +176,15 @@ export const subjectsAPI = {
     return response.data;
   },
 
-  updateStudyTime: async (min: number, subjectId: string) => {
+  updateStudyTime: async (
+    min: number,
+    subjectId: string,
+    numberOfCompletedTopics: number = 0
+  ) => {
     const response = await axiosInstance.post("/subjects/studyTimeUpdate", {
       min,
       subjectId,
+      numberOfCompletedTopics,
     });
     return response.data;
   },
@@ -196,6 +201,14 @@ export const subjectsAPI = {
 
   getWeeklyMastery: async () => {
     const response = await axiosInstance.get("/subjects/weekly-mastery");
+    return response.data;
+  },
+
+  updateCompletedTopics: async (subjectData: any) => {
+    const response = await axiosInstance.post(
+      "/subjects/updateCompletedTopics",
+      subjectData
+    );
     return response.data;
   },
 };

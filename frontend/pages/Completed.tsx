@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
+import * as Ariakit from "@ariakit/react";
 import { subjectsAPI } from "../services/api";
+import "../index.css";
 
 interface CompletedTopic {
   id: string;
@@ -263,18 +265,29 @@ const Completed: React.FC = () => {
               </h3>
             </div>
 
-            <select
-              className="w-full px-4 py-3 bg-background-dark border border-border-dark rounded-xl text-white text-sm font-bold focus:ring-2 focus:ring-primary outline-none cursor-pointer transition-all"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-            >
-              <option value="">All Dates</option>
-              {availableDates.map((date) => (
-                <option key={date} value={date}>
-                  {formatDate(date)}
-                </option>
-              ))}
-            </select>
+            <Ariakit.MenuProvider>
+              <Ariakit.MenuButton className="button w-full">
+                {selectedDate ? formatDate(selectedDate) : "All Dates"}
+                <Ariakit.MenuButtonArrow />
+              </Ariakit.MenuButton>
+              <Ariakit.Menu gutter={8} className="menu" portal>
+                <Ariakit.MenuItem
+                  className="menu-item"
+                  onClick={() => setSelectedDate("")}
+                >
+                  All Dates
+                </Ariakit.MenuItem>
+                {availableDates.map((date) => (
+                  <Ariakit.MenuItem
+                    key={date}
+                    className="menu-item"
+                    onClick={() => setSelectedDate(date)}
+                  >
+                    {formatDate(date)}
+                  </Ariakit.MenuItem>
+                ))}
+              </Ariakit.Menu>
+            </Ariakit.MenuProvider>
 
             {selectedDate && dateStudyStats && (
               <div className="mt-4 pt-4 border-t border-white/10">
@@ -307,18 +320,30 @@ const Completed: React.FC = () => {
                 Subject Progress
               </p>
               <div className="mb-4">
-                <select
-                  className="w-full px-4 py-3 bg-background-dark/50 border border-white/10 rounded-xl text-white text-sm font-bold focus:ring-2 focus:ring-indigo-500/50 outline-none cursor-pointer transition-all appearance-none"
-                  value={selectedSubjectId}
-                  onChange={(e) => setSelectedSubjectId(e.target.value)}
-                >
-                  <option value="">Select Subject to View</option>
-                  {subjects.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                <Ariakit.MenuProvider>
+                  <Ariakit.MenuButton className="button w-full">
+                    {subjects.find((s) => s.id === selectedSubjectId)?.name ||
+                      "Select Subject to View"}
+                    <Ariakit.MenuButtonArrow />
+                  </Ariakit.MenuButton>
+                  <Ariakit.Menu gutter={8} className="menu" portal>
+                    <Ariakit.MenuItem
+                      className="menu-item"
+                      onClick={() => setSelectedSubjectId("")}
+                    >
+                      Select Subject to View
+                    </Ariakit.MenuItem>
+                    {subjects.map((s) => (
+                      <Ariakit.MenuItem
+                        key={s.id}
+                        className="menu-item"
+                        onClick={() => setSelectedSubjectId(s.id)}
+                      >
+                        {s.name}
+                      </Ariakit.MenuItem>
+                    ))}
+                  </Ariakit.Menu>
+                </Ariakit.MenuProvider>
               </div>
 
               {subjectProgress ? (

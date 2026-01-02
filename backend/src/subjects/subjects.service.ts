@@ -10,7 +10,7 @@ export class SubjectsService {
   constructor(
     @InjectModel('User') private userModel: Model<User>,
     @InjectModel('Subject') private subjectModel: Model<Subject>,
-    @InjectModel('studyTime') private studyTimeModel: Model<StudyTime>,
+    @InjectModel('StudyTime') private studyTimeModel: Model<StudyTime>,
   ) {}
 
   async studyGoal(userId: mongoose.Types.ObjectId, min: number) {
@@ -34,15 +34,7 @@ export class SubjectsService {
       minutes: user.studyMinutes,
     };
   }
-  async getStreak(userId: mongoose.Types.ObjectId) {
-    const user = await this.userModel.findById(userId).exec();
-    if (!user) {
-      throw new Error('User not found');
-    }
-    return {
-      streak: user.streak,
-    };
-  }
+
   async getUserSubjects(userId: mongoose.Types.ObjectId) {
     const subjects = await this.subjectModel
       .find({ userId: userId as any })
@@ -120,20 +112,25 @@ export class SubjectsService {
     studyTime: {
       min: number;
       subjectId: mongoose.Schema.Types.ObjectId;
+      numberOfCompletedTopics: number;
     },
   ) {
-    // current year + month + date in milliseconds
+  
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayMillis = today.getTime();
 
+    console.log(studyTime);
     await this.studyTimeModel.findOneAndUpdate(
       {
         subjectId: studyTime.subjectId,
         studyDate: todayMillis,
       },
       {
-        $inc: { studyMinutes: studyTime.min },
+        $inc: {
+          studyMinutes: studyTime.min,
+          numberOfCompletedTopics: studyTime.numberOfCompletedTopics || 0,
+        },
         $setOnInsert: {
           userId,
           subjectId: studyTime.subjectId,
@@ -152,7 +149,6 @@ export class SubjectsService {
   }
 
   async getTodayStudyTime(userId: any) {
-    // current year + month + date (00:00) in ms
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const todayMillis = today.getTime();
@@ -289,6 +285,66 @@ export class SubjectsService {
     return {
       totalHours: +(totalMinutesAllSubjects / 60).toFixed(1),
       subjects: subjectsData.filter((s) => s !== null),
+    };
+  }
+
+  async handleStreakUpdate() {
+    const users = await this.userModel.find().exec();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterdayMillis = today.getTime() - 86400000;
+    const todayMillis = today.getTime();
+
+    for (const user of users) {
+      const result = await this.studyTimeModel.aggregate([
+        {
+          $match: {
+            userId: user._id,
+            studyDate: { $gte: yesterdayMillis, $lt: todayMillis },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            totalMinutes: { $sum: '$studyMinutes' },
+          },
+        },
+      ]);
+
+      const studiedMinutes = result[0]?.totalMinutes || 0;
+
+      if (studiedMinutes >= user.studyMinutes) {
+        user.streak += 1;
+      } else {
+        user.streak = 0;
+      }
+      await user.save();
+    }
+  }
+
+  async getStreak(userId: mongoose.Types.ObjectId) {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new Error('User not found');
+    }
+    return {
+      streak: user.streak,
+    };
+  }
+
+  async updateCompletedTopics(userId: string, subjectData: any) {
+    const data = await this.subjectModel.findOneAndUpdate(
+      {
+        _id: new mongoose.Types.ObjectId(subjectData._id),
+        userId: new mongoose.Types.ObjectId(userId),
+      } as any,
+      {
+        $set: subjectData,
+      },
+    );
+    // console.log(data);
+    return {
+      message: 'completed topics updated',
     };
   }
 }

@@ -12,6 +12,7 @@ import {
 import { SubjectsService } from './subjects.service';
 import { AuthGuard } from '../../Guards/jwt.guards';
 import mongoose from 'mongoose';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @UseGuards(AuthGuard)
 @Controller('subjects')
@@ -54,12 +55,12 @@ export class SubjectsController {
   async totalSubjectsWithData(@Req() req: any) {
     const userId = req.user.id;
     return this.subjectsService.totalSubjectsWithData(userId);
-  }
+  } 
 
   @Post('studyTimeUpdate')
   async updateStudyTime(
     @Body()
-    studyTime: { min: number; subjectId: mongoose.Schema.Types.ObjectId },
+    studyTime: { min: number; subjectId: mongoose.Schema.Types.ObjectId, numberOfCompletedTopics: number },
     @Req() req: any,
   ) {
     const userId = req.user.id;
@@ -82,5 +83,17 @@ export class SubjectsController {
   async getWeeklyMastery(@Req() req: any) {
     const userId = req.user.id;
     return this.subjectsService.getWeeklyMastery(userId);
+  }
+
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async handleStreakUpdate() {
+   this.subjectsService.handleStreakUpdate();
+  }
+
+  @Post('updateCompletedTopics')
+  async updateCompletedTopics(@Req() req: any, @Body() subjectData: any){
+    const userId = req.user.id;
+    return this.subjectsService.updateCompletedTopics(userId,subjectData);
   }
 }

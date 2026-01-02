@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { studyGoalAPI, subjectsAPI } from "../services/api";
+import { useTimer } from "../context/TimerContext";
 
 const studyData = [
   { name: "Mon", hours: 4.5, goal: 5 },
@@ -20,66 +21,29 @@ const studyData = [
   { name: "Sun", hours: 4.0, goal: 2 },
 ];
 
-const ENROLLED_SUBJECTS = [
-  {
-    id: "cs101",
-    name: "Computer Science 101",
-    code: "CS101",
-    color: "indigo",
-    topics: [
-      "Big O Notation",
-      "Data Structures",
-      "Recursion",
-      "Sorting Algorithms",
-    ],
-  },
-  {
-    id: "math202",
-    name: "Calculus II",
-    code: "MATH202",
-    color: "rose",
-    topics: ["Integration", "Series", "Polar Coordinates", "Vector Calculus"],
-  },
-  {
-    id: "psych110",
-    name: "Intro to Psychology",
-    code: "PSYCH110",
-    color: "amber",
-    topics: [
-      "Cognitive Bias",
-      "Behavioral Science",
-      "Neuroscience",
-      "Social Dynamics",
-    ],
-  },
-  {
-    id: "hist101",
-    name: "World History",
-    code: "HIST101",
-    color: "slate",
-    topics: [
-      "Industrial Revolution",
-      "French Revolution",
-      "Cold War",
-      "Modern Era",
-    ],
-  },
-];
-
 const Dashboard: React.FC = () => {
-  // activeSubject is derived from the fetched subjects, so we should strictly type it or use any for flexibility with the new chapters data
-  const [activeSubject, setActiveSubject] = useState<any | null>(null);
-  const [isSessionFinished, setIsSessionFinished] = useState(false);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [timerSeconds, setTimerSeconds] = useState(0);
-  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+  const {
+    activeSubject,
+    setActiveSubject,
+    isTimerRunning,
+    setIsTimerRunning,
+    timerSeconds,
+    setTimerSeconds,
+    isSessionFinished,
+    setIsSessionFinished,
+    handleStopSession,
+    formatTime,
+    isMinimized,
+    setIsMinimized,
+  } = useTimer();
+
   const [dailyGoalMinutes, setDailyGoalMinutes] = useState(300); // Default 5 hours
-  const [studiedTodayMinutes, setStudiedTodayMinutes] = useState(252); // Mock 4.2 hours
+  const [studiedTodayMinutes, setStudiedTodayMinutes] = useState(0);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [isLoadingGoal, setIsLoadingGoal] = useState(false);
   const [tempHours, setTempHours] = useState(Math.floor(dailyGoalMinutes / 60));
   const [tempMins, setTempMins] = useState(dailyGoalMinutes % 60);
-  const [currentStreak, setCurrentStreak] = useState(12); // Default value
+  const [currentStreak, setCurrentStreak] = useState(0);
 
   // Fetch study goal and streak on mount
   useEffect(() => {
@@ -89,6 +53,8 @@ const Dashboard: React.FC = () => {
         const goalResponse = await studyGoalAPI.getStudyGoal();
         if (goalResponse.minutes) {
           setDailyGoalMinutes(goalResponse.minutes);
+          setTempHours(Math.floor(goalResponse.minutes / 60));
+          setTempMins(goalResponse.minutes % 60);
         }
 
         // Fetch streak
@@ -169,63 +135,17 @@ const Dashboard: React.FC = () => {
     fetchMastery();
   }, []);
 
-  useEffect(() => {
-    let interval: number | undefined;
-    if (isTimerRunning) {
-      interval = window.setInterval(() => {
-        setTimerSeconds((s) => s + 1);
-      }, 1000);
-    } else {
-      clearInterval(interval);
-    }
-    return () => clearInterval(interval);
-  }, [isTimerRunning]);
-
-  const formatTime = (totalSeconds: number) => {
-    const hrs = Math.floor(totalSeconds / 3600);
-    const mins = Math.floor((totalSeconds % 3600) / 60);
-    const secs = totalSeconds % 60;
-    return `${hrs.toString().padStart(2, "0")}:${mins
-      .toString()
-      .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const handleStartTimer = () => setIsTimerRunning(true);
-  const handleStopSession = async () => {
-    setIsTimerRunning(false);
-    setIsSessionFinished(true);
-
-    if (activeSubject?.id && timerSeconds > 0) {
-      try {
-        const minutes = Math.ceil(timerSeconds / 60);
-        await subjectsAPI.updateStudyTime(minutes, activeSubject.id);
-        console.log("Study time updated:", minutes);
-      } catch (error) {
-        console.error("Failed to update study time:", error);
-      }
-    }
-  };
-
   const handleUpdateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
     const totalMinutes = Number(tempHours) * 60 + Number(tempMins);
     setIsLoadingGoal(true);
 
     try {
-      // Step 1: Update the study goal
       await studyGoalAPI.updateStudyGoal(totalMinutes);
-
-      // Step 2: Fetch the updated goal from backend to confirm
       const response = await studyGoalAPI.getStudyGoal();
       if (response.minutes) {
         setDailyGoalMinutes(response.minutes);
-        console.log(
-          "✅ Study goal updated and refreshed:",
-          response.minutes,
-          "minutes"
-        );
       }
-
       setIsEditingGoal(false);
     } catch (err) {
       console.error("Failed to update study goal:", err);
@@ -503,7 +423,6 @@ const Dashboard: React.FC = () => {
               <div className="space-y-4">
                 {masteryData.subjects.length > 0 ? (
                   masteryData.subjects.map((sub: any, index: number) => {
-                    // Assign colors cyclically or randomly if not provided
                     const colors = [
                       "bg-indigo-500",
                       "bg-rose-500",
@@ -533,164 +452,6 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Timer Modal */}
-      {activeSubject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-background-dark/80 backdrop-blur-md"
-            onClick={() => !isTimerRunning && setActiveSubject(null)}
-          ></div>
-          <div className="relative bg-surface-dark border border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
-            <div
-              className={`absolute top-0 left-0 w-full h-2 ${
-                activeSubject.color === "indigo"
-                  ? "bg-indigo-500"
-                  : activeSubject.color === "rose"
-                  ? "bg-rose-500"
-                  : activeSubject.color === "amber"
-                  ? "bg-amber-500"
-                  : "bg-slate-500"
-              }`}
-            ></div>
-
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-primary">
-                  Active Session
-                </span>
-                <h2 className="text-2xl font-black text-white leading-tight">
-                  {activeSubject.name}
-                </h2>
-              </div>
-              {!isTimerRunning && (
-                <button
-                  onClick={() => setActiveSubject(null)}
-                  className="size-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
-                >
-                  <span className="material-symbols-outlined text-[20px]">
-                    close
-                  </span>
-                </button>
-              )}
-            </div>
-
-            <div className="flex flex-col items-center gap-8 py-4">
-              <div className="relative flex items-center justify-center">
-                <div className="text-7xl font-black text-white tracking-tighter tabular-nums drop-shadow-[0_0_20px_rgba(99,102,241,0.3)]">
-                  {formatTime(timerSeconds)}
-                </div>
-              </div>
-
-              {/* Controls Area */}
-              <div className="flex items-center justify-center gap-4 w-full">
-                {!isTimerRunning && !isSessionFinished ? (
-                  <button
-                    onClick={() => {
-                      setIsTimerRunning(true);
-                      setIsSessionFinished(false);
-                    }}
-                    className="w-full py-4 bg-primary rounded-2xl text-white font-bold text-lg hover:bg-indigo-400 transition-all shadow-lg hover:shadow-indigo-500/25 active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined">
-                      play_arrow
-                    </span>
-                    Start Focus
-                  </button>
-                ) : isTimerRunning ? (
-                  <button
-                    onClick={handleStopSession}
-                    className="w-full py-4 bg-rose-500 rounded-2xl text-white font-bold text-lg hover:bg-rose-400 transition-all shadow-lg hover:shadow-rose-500/25 active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined">stop</span>
-                    Stop Session
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setActiveSubject(null);
-                      setIsSessionFinished(false);
-                      setTimerSeconds(0);
-                    }}
-                    className="w-full py-4 bg-slate-700 rounded-2xl text-white font-bold text-lg hover:bg-slate-600 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <span className="material-symbols-outlined">close</span>
-                    Close Session
-                  </button>
-                )}
-              </div>
-
-              {/* Conditional Roadmap / Topics View */}
-              {isSessionFinished && (
-                <div className="w-full mt-2 animate-in slide-in-from-bottom-4 fade-in duration-500 border-t border-white/10 pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <label className="text-[10px] font-black text-[#5a6b85] uppercase tracking-widest">
-                      Session Map
-                    </label>
-                    <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-                      Review Progress
-                    </span>
-                  </div>
-
-                  <div className="max-h-[300px] overflow-y-auto pr-2 space-y-4 custom-scrollbar">
-                    {activeSubject.chapters?.map((chapter: any, i: number) => (
-                      <div
-                        key={i}
-                        className="bg-background-dark/30 rounded-xl p-4 border border-white/5"
-                      >
-                        <h4 className="text-white font-bold text-sm mb-3 sticky top-0 bg-transparent backdrop-blur-sm z-10 flex items-center justify-between">
-                          {chapter.name}
-                          <span className="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded border border-white/5">
-                            Sec {chapter.section}
-                          </span>
-                        </h4>
-                        <div className="grid grid-cols-1 gap-2">
-                          {chapter.subtopics.map((sub: any, j: number) => (
-                            <div
-                              key={j}
-                              className={`flex items-center justify-between p-3 rounded-lg border text-xs font-medium transition-all ${
-                                sub.isCompleted
-                                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                                  : "bg-slate-800/50 border-white/5 text-slate-400"
-                              }`}
-                            >
-                              <span>{sub.name}</span>
-                              {sub.isCompleted && (
-                                <span className="material-symbols-outlined text-[16px]">
-                                  check_circle
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    {(!activeSubject.chapters ||
-                      activeSubject.chapters.length === 0) && (
-                      <p className="text-slate-500 text-center text-sm py-4">
-                        No detailed roadmap available.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {isTimerRunning && (
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-1">
-                    <div className="size-1.5 rounded-full bg-primary animate-bounce"></div>
-                    <div className="size-1.5 rounded-full bg-primary animate-bounce [animation-delay:0.2s]"></div>
-                    <div className="size-1.5 rounded-full bg-primary animate-bounce [animation-delay:0.4s]"></div>
-                  </div>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">
-                    Focusing on {selectedTopic}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Daily Goal Edit Modal */}
       {isEditingGoal && (

@@ -1,10 +1,20 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import * as Ariakit from "@ariakit/react";
 import { subjectsAPI } from "../services/api";
+import "../index.css";
 
 const Tasks: React.FC = () => {
   const [subjects, setSubjects] = useState<any[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const selectedSubjectName = useMemo(() => {
+    if (selectedSubjectId === "All") return "All Subjects";
+    return (
+      subjects.find((s) => s._id === selectedSubjectId)?.subjectName ||
+      "All Subjects"
+    );
+  }, [subjects, selectedSubjectId]);
 
   React.useEffect(() => {
     const fetchSyllabus = async () => {
@@ -65,21 +75,34 @@ const Tasks: React.FC = () => {
 
           <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
             <div className="relative group min-w-[200px]">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#92a9c9] text-[20px]">
-                filter_list
-              </span>
-              <select
-                className="w-full pl-10 pr-4 py-2.5 bg-surface-dark border border-border-dark rounded-xl text-white text-sm font-bold focus:ring-2 focus:ring-primary outline-none cursor-pointer transition-all appearance-none"
-                value={selectedSubjectId}
-                onChange={(e) => setSelectedSubjectId(e.target.value)}
-              >
-                <option value="All">All Subjects</option>
-                {subjects.map((s) => (
-                  <option key={s._id} value={s._id}>
-                    {s.subjectName}
-                  </option>
-                ))}
-              </select>
+              <Ariakit.MenuProvider>
+                <Ariakit.MenuButton className="button w-full">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-indigo-400">
+                      filter_list
+                    </span>
+                    {selectedSubjectName}
+                  </div>
+                  <Ariakit.MenuButtonArrow />
+                </Ariakit.MenuButton>
+                <Ariakit.Menu gutter={8} className="menu" portal>
+                  <Ariakit.MenuItem
+                    className="menu-item"
+                    onClick={() => setSelectedSubjectId("All")}
+                  >
+                    All Subjects
+                  </Ariakit.MenuItem>
+                  {subjects.map((s) => (
+                    <Ariakit.MenuItem
+                      key={s._id}
+                      className="menu-item"
+                      onClick={() => setSelectedSubjectId(s._id)}
+                    >
+                      {s.subjectName}
+                    </Ariakit.MenuItem>
+                  ))}
+                </Ariakit.Menu>
+              </Ariakit.MenuProvider>
             </div>
 
             <div className="relative flex-1 sm:w-64">
@@ -89,7 +112,7 @@ const Tasks: React.FC = () => {
               <input
                 type="text"
                 placeholder="Find a topic..."
-                className="w-full pl-10 pr-4 py-2.5 bg-surface-dark border border-border-dark rounded-xl text-white text-sm focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-slate-600"
+                className="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-2xl text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all placeholder:text-slate-500 hover:bg-white/10"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -141,7 +164,7 @@ const Tasks: React.FC = () => {
               </div>
             </div>
             <div className="flex-1 text-center md:text-left">
-              <h3 className="text-xl font-black text-white uppercase tracking-wider">
+              <h3 className="text-3xl font-black text-white uppercase tracking-wider">
                 {selectedSubjectId === "All" ? "Combined" : "Subject"}{" "}
                 Curriculum
               </h3>
@@ -156,13 +179,13 @@ const Tasks: React.FC = () => {
                   : " Keep moving through the syllabus."}
               </p>
               <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
-                <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase text-indigo-300">
+                <span className="px-5 py-2 bg-white/5 border border-white/10 rounded-full text-sm font-black uppercase text-indigo-300">
                   Total: {stats.total} Topics
                 </span>
-                <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase text-green-400">
+                <span className="px-5 py-2 bg-white/5 border border-white/10 rounded-full text-sm font-black uppercase text-green-400">
                   Completed: {stats.completed}
                 </span>
-                <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase text-amber-400">
+                <span className="px-5 py-2 bg-white/5 border border-white/10 rounded-full text-sm font-black uppercase text-amber-400">
                   Remaining: {stats.total - stats.completed}
                 </span>
               </div>

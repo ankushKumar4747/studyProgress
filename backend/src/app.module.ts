@@ -8,6 +8,7 @@ import { SubjectsModule } from './subjects/subjects.module';
 import { AssignmentModule } from './assignment/assignment.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ScheduleModule } from '@nestjs/schedule';
+import { AnalyticsModule } from './analytics/analytics.module';
 @Module({
   imports: [
     AuthModule,
@@ -20,6 +21,7 @@ import { ScheduleModule } from '@nestjs/schedule';
       signOptions: { expiresIn: '1h' },
     }),
     ScheduleModule.forRoot(),
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

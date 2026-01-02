@@ -15,6 +15,10 @@ export class StudyTime {
 
   @Prop({ required: true })
   studyDate: number;
+
+  @Prop({ required: true })
+  numberOfCompletedTopics: number;
+
 }
 
 export const StudyTimeSchema = SchemaFactory.createForClass(StudyTime);

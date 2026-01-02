@@ -11,9 +11,9 @@ import { StudyTimeSchema } from './entities/studtyTime.entity';
     MongooseModule.forFeature([
       { name: 'Subject', schema: SubjectSchema },
       { name: 'User', schema: UserSchema },
-      {name:"studyTime", schema:StudyTimeSchema}
+      { name: 'StudyTime', schema: StudyTimeSchema },
     ]),
-],
+  ],
   controllers: [SubjectsController],
   providers: [SubjectsService],
 })
